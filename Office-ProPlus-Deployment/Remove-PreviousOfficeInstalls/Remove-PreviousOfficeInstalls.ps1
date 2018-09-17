@@ -1,7 +1,7 @@
-﻿[CmdletBinding(SupportsShouldProcess=$true)]
+[CmdletBinding(SupportsShouldProcess=$true)]
 param(
 [Parameter(ValueFromPipelineByPropertyName=$true)]
-[bool]$RemoveClickToRunVersions = $false,
+[bool]$RemoveClickToRunVersions = $true,
 
 [Parameter(ValueFromPipelineByPropertyName=$true)]
 [bool]$Remove2016Installs = $false,
@@ -22,12 +22,12 @@ param(
 [bool]$Quiet = $true,
 
 [Parameter()]
-[ValidateSet("AllOfficeProducts","MainOfficeProduct","Visio","Project")]
+[ValidateSet("AllOfficeProducts","MainOfficeProduct","Visio","Project","Lync")]
 [string[]]$ProductsToRemove = "AllOfficeProducts",
 
 [Parameter()]
 [ValidateSet("O365ProPlusRetail","O365BusinessRetail","VisioProRetail","ProjectProRetail", "SPDRetail", "VisioProXVolume", "VisioStdXVolume", 
-             "ProjectProXVolume", "ProjectStdXVolume", "InfoPathRetail", "SkypeforBusinessEntryRetail", "LyncEntryRetail")]
+             "ProjectProXVolume", "ProjectStdXVolume", "InfoPathRetail", "SkypeforBusinessEntryRetail", "LyncEntryRetail", "AccessRuntimeRetail")]
 [string]$C2RProductsToRemove = "O365ProPlusRetail",
 
 [Parameter()]
@@ -35,7 +35,7 @@ param(
 )
 
 $validProductIds = @("O365ProPlusRetail","O365BusinessRetail","VisioProRetail","ProjectProRetail", "SPDRetail", "VisioProXVolume", "VisioStdXVolume", 
-                     "ProjectProXVolume", "ProjectStdXVolume", "InfoPathRetail", "SkypeforBusinessEntryRetail", "LyncEntryRetail")
+                     "ProjectProXVolume", "ProjectStdXVolume", "InfoPathRetail", "SkypeforBusinessEntryRetail", "LyncEntryRetail", "AccessRuntimeRetail")
 
 $validLanguages = @(
 "English|en-us",          #beginning of core languages
@@ -145,49 +145,51 @@ $validLanguages = @(
 Function Remove-PreviousOfficeInstalls{
 <#
 .SYNOPSIS
-Automate the process to remove Office products.
+    Automate the process to remove Office products.
 
 .DESCRIPTION
-Automate the process to remove Office products.
+    Automate the process to remove Office products.
 
 .PARAMETER RemoveClickToRunVersions
-Set the value to $true to also remove Click-To-Run version of Office.
+    Set the value to $true to also remove Click-To-Run version of Office.
 
 .PARAMETER Remove2016Installs
-Set the value to $true to also remove 2016 versions of Office.
+    Set the value to $true to also remove 2016 versions of Office.
 
 .PARAMETER Force
-Set the value to $true to force an uninstall.
+    Set the value to $true to force an uninstall.
 
 .PARAMETER KeepUserSettings
-By default, the value is set to $true. Set to $false to remove user settings.
+    By default, the value is set to $true. Set to $false to remove user settings.
 
 .PARAMETER KeepLync
-Set the value to $true to preserve the Lync installation.
+    Set the value to $true to preserve the Lync installation.
 
 .PARAMETER NoReboot
-By default, the value is set to $false. Set to $true to offer the reboot prompt if needed.
+    By default, the value is set to $false. Set to $true to offer the reboot prompt if needed.
  
 .PARAMETER Quiet
-By default, the value is set to $true. Set to $false to show the progress of 
-the uninstall.
+    By default, the value is set to $true. Set to $false to show the progress of the uninstall.
 
 .PARAMETER ProductsToRemove
-By default the value is AllOfficeProducts which will remove all Office products. Set this value
-to MainOfficeProduct, Visio, and/or Project to only remove the specified product.
+    By default the value is AllOfficeProducts which will remove all Office products. Set this value
+    to MainOfficeProduct, Visio, and/or Project to only remove the specified product.
 
 .EXAMPLE
-Remove-PreviousOfficeInstalls
-In this example all Office products, except for click to run or 2016, will be removed.
+    Remove-PreviousOfficeInstalls
+    
+    In this example all Office products, except for click to run or 2016, will be removed.
 
 .EXAMPLE
-Remove-PreviousOfficeInstalls -ProductsToRemove MainOfficeProduct,Visio
-In this example the primary office product and Visio will be removed.Click-To-Run or 2016
-products will not be removed.
+    Remove-PreviousOfficeInstalls -ProductsToRemove MainOfficeProduct,Visio
+    
+    In this example the primary office product and Visio will be removed.Click-To-Run or 2016
+    products will not be removed.
 
 .EXAMPLE
-Remove-PreviousOfficeInstalls -ProductsToRemove MainOfficeProduct -RemoveClickToRunVersions $true
-In this example the primary Office product will be removed even if it is Click-To-Run.
+    Remove-PreviousOfficeInstalls -ProductsToRemove MainOfficeProduct -RemoveClickToRunVersions $true
+    
+    In this example the primary Office product will be removed even if it is Click-To-Run.
 
 #>
   [CmdletBinding(SupportsShouldProcess=$true)]
@@ -214,7 +216,7 @@ In this example the primary Office product will be removed even if it is Click-T
     [bool]$Quiet = $true,
 
     [Parameter(ValueFromPipelineByPropertyName=$true)]
-    [ValidateSet("AllOfficeProducts","MainOfficeProduct","Visio","Project")]
+    [ValidateSet("AllOfficeProducts","MainOfficeProduct","Visio","Project","Lync")]
     [string[]]$ProductsToRemove = "AllOfficeProducts",
 
     [Parameter()]
@@ -241,6 +243,7 @@ In this example the primary Office product will be removed even if it is Click-T
 
     [bool]$isVisioC2R = $false
     [bool]$isProjectC2R = $false
+    [bool]$isLyncC2R = $false
    
     if($ProductsToRemove -eq 'AllOfficeProducts'){
         $argListProducts += "CLIENTALL"
@@ -249,7 +252,6 @@ In this example the primary Office product will be removed even if it is Click-T
             switch($product){
                 "MainOfficeProduct"{
                     $OfficeProduct = GetProductName -ProductName MainOfficeProduct
-                    WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "OfficeProduct set to $OfficeProduct" -LogFilePath $LogFilePath
                     $MainOfficeProduct = $OfficeProduct | ? {$_.DisplayName -notmatch "Language Pack"}
                     $OfficeLanguagePacks = $officeProduct | ? {$_.DisplayName -match "Language Pack"}
                     if($OfficeLanguagePacks){
@@ -262,7 +264,6 @@ In this example the primary Office product will be removed even if it is Click-T
                 }
                 "Visio" {
                     $VisioProduct = GetProductName -ProductName Visio
-                    WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "VisioProduct set to $VisioProduct" -LogFilePath $LogFilePath
                     $MainVisioProduct = $VisioProduct | ? {$_.DisplayName -notmatch "Language Pack"}
                     $VisioLanguagePacks = $VisioProduct | ? {$_.DisplayName -match "Language Pack"}
                     if($VisioLanguagePacks){
@@ -285,7 +286,6 @@ In this example the primary Office product will be removed even if it is Click-T
                 }
                 "Project" {
                     $ProjectProduct = GetProductName -ProductName Project
-                    WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "ProjectProduct set to $ProjectProduct" -LogFilePath $LogFilePath
                     $MainProjectProduct = $ProjectProduct | ? {$_.DisplayName -notmatch "Language Pack"}
                     $ProjectLanguagePacks = $ProjectProduct | ? {$_.DisplayName -match "Language Pack"}
                     if($ProjectLanguagePacks){
@@ -304,6 +304,28 @@ In this example the primary Office product will be removed even if it is Click-T
 
                     if($ProjectProdName.ClickToRun -eq $true){
                         $isProjectC2R = $true
+                    }
+                }
+                "Lync" {
+                    $LyncProduct = GetProductName -ProductName Lync
+                    $MainLyncProduct = $LyncProduct | ? {$_.DisplayName -notmatch "Language Pack"}
+                    $LyncLanguagePacks = $LyncProduct | ? {$_.DisplayName -match "Language Pack" -or $_.DisplayName -match "MUI"}
+                    if($LyncLanguagePacks){
+                        foreach($LyncLang in $LyncLanguagePacks){
+                            $LyncArgListProducts += $LyncLang.Name
+                        }
+                    }
+                    $LyncArgListProducts += $MainLyncProduct.Name
+                    $LyncArgListProducts = $LyncArgListProducts -join ","
+
+                    foreach($product in $officeProducts){
+                        if($product.DisplayName.ToLower() -eq $LyncProduct.DisplayName.ToLower()){
+                            $LyncProdName = $product
+                        }
+                    }
+
+                    if($LyncProdName.ClickToRun -eq $true){
+                        $isLyncC2R = $true
                     }
                 }
             }
@@ -344,9 +366,11 @@ In this example the primary Office product will be removed even if it is Click-T
     
     $removeOffice = $true
     if (!( $officeVersions)) {
-       Write-Host "Microsoft Office is not installed"
-       WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "Microsoft Office is not installed" -LogFilePath $LogFilePath
-       $removeOffice = $false
+        if(!($ProductsToRemove -contains "Lync")){
+            Write-Host "Microsoft Office is not installed"
+            WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "Microsoft Office is not installed" -LogFilePath $LogFilePath
+            $removeOffice = $false
+        }
     }
 
     if ($removeOffice) {
@@ -373,6 +397,7 @@ In this example the primary Office product will be removed even if it is Click-T
                         switch($MainOfficeProduct.Version){
                             "11" {
                                 $ActionFile = "$scriptPath\$03VBS"
+                                $MainOfficeProductName = '"' + $MainOfficeProductName + '"'
                             }
                             "12" {
                                 $ActionFile = "$scriptPath\$07VBS"
@@ -432,6 +457,7 @@ In this example the primary Office product will be removed even if it is Click-T
                         switch($VisioProduct.Version){
                             "11" {
                                 $ActionFile = "$scriptPath\$03VBS"
+                                $VisioArgListProducts = '"' + $VisioArgListProducts + '"'
                             }
                             "12" {
                                 $ActionFile = "$scriptPath\$07VBS"
@@ -485,6 +511,7 @@ In this example the primary Office product will be removed even if it is Click-T
                         switch($ProjectProduct.Version){
                             "11" {
                                 $ActionFile = "$scriptPath\$03VBS"
+                                $ProjectArgListProducts = '"' + $ProjectArgListProducts + '"'
                             }
                             "12" {
                                 $ActionFile = "$scriptPath\$07VBS"
@@ -523,7 +550,30 @@ In this example the primary Office product will be removed even if it is Click-T
                                 }
                             }
                         if($ActionFile -And (Test-Path -Path $ActionFile)){
-                            $cmdLine = """$ActionFile"" $ProjectProductName $argList"
+                            $cmdLine = """$ActionFile"" $ProjectArgListProducts $argList"
+                            $cmd = "cmd /c cscript //Nologo $cmdLine"
+                            Invoke-Expression $cmd
+                        }
+                    }
+                     "Lync" {
+                        Write-Host "`tRemoving Lync products..."
+                        WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "Removing Lync products..." -LogFilePath $LogFilePath
+                        $LyncProductName = $LyncProduct.Name
+
+                        switch($LyncProduct.Version){
+                            "1" {
+                                $ActionFile = "$scriptPath\$03VBS"
+                            }
+                            "2" {
+                                $ActionFile = "$scriptPath\$07VBS"
+                            }
+                            "4" {
+                                $ActionFile = "$scriptPath\$10VBS"
+                            }
+                        }
+
+                        if($ActionFile -And (Test-Path -Path $ActionFile)){
+                            $cmdLine = """$ActionFile"" $LyncProductName $argList"
                             $cmd = "cmd /c cscript //Nologo $cmdLine"
                             Invoke-Expression $cmd
                         }
@@ -566,6 +616,10 @@ In this example the primary Office product will be removed even if it is Click-T
                         }
                         "15.*"{
                             if(!$office15Removed){
+                                if($product.ClickToRun -eq $true){
+                                    $c2r2013Installed = $true
+                                }
+
                                 if(!$c2r2013Installed){
                                     $ActionFile = "$scriptPath\$15MSIVBS"
                                 } else {
@@ -617,21 +671,21 @@ In this example the primary Office product will be removed even if it is Click-T
 Function Remove-OfficeClickToRun {
 <#
 .Synopsis
-Removes the Click to Run version of Office installed.
+    Removes the Click to Run version of Office installed.
 
 .DESCRIPTION
-If Office Click-to-Run is installed the administrator will be prompted to confirm
-uninstallation. A configuration file will be generated and used to remove all Office CTR 
-products.
+    If Office Click-to-Run is installed the administrator will be prompted to confirm
+    uninstallation. A configuration file will be generated and used to remove all Office CTR 
+    products.
 
 .PARAMETER ComputerName
-The computer or list of computers from which to query 
+    The computer or list of computers from which to query 
 
 .EXAMPLE
-Remove-OfficeClickToRun
+    Remove-OfficeClickToRun
 
 Description:
-Will uninstall Office Click-to-Run.
+    Will uninstall Office Click-to-Run.
 #>
     [CmdletBinding()]
     Param(
@@ -810,8 +864,7 @@ Function StartProcess {
     }
     Catch
     {
-        Write-Log -Message $_.Exception.Message -severity 1 -component "Office 365 Update Anywhere"
-        WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError $_
+        WriteToLogFile -LNumber $_.InvocationInfo.ScriptLineNumber -FName $currentFileName -ActionError $_
     }
 }
 
@@ -836,12 +889,12 @@ Function IsSupportedLanguage() {
            if ($ShowLanguages) {
               Write-Host
               Write-Host "Invalid or Unsupported Language. Please select a language." -NoNewLine -BackgroundColor Red
-              WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "Invalid or Unsupported Language. Please select a language." -LogFilePath $LogFilePath
+              WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "Invalid or Unsupported Language. Please select a language." -NoNewLine -BackgroundColor Red -LogFilePath $LogFilePath
               Write-Host
 
               return SelectLanguage 
            } else {
-              WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "Invalid or Unsupported Language: $Language" -LogFilePath $LogFilePath
+              WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "Invalid or Unsupported Language: $Language" -NoNewLine -BackgroundColor Red -LogFilePath $LogFilePath
               throw "Invalid or Unsupported Language: $Language"
            }
            
@@ -922,32 +975,40 @@ Function LanguagePrompt() {
 Function Get-OfficeVersion {
 <#
 .Synopsis
-Gets the Office Version installed on the computer
+    Gets the Office Version installed on the computer
+
 .DESCRIPTION
-This function will query the local or a remote computer and return the information about Office Products installed on the computer
+    This function will query the local or a remote computer and return the information about Office Products installed on the computer
+
 .NOTES   
-Name: Get-OfficeVersion
-Version: 1.0.5
-DateCreated: 2015-07-01
-DateUpdated: 2016-10-14
+    Name: Get-OfficeVersion
+    Version: 1.0.5
+    DateCreated: 2015-07-01
+    DateUpdated: 2016-10-14
+
 .LINK
-https://github.com/OfficeDev/Office-IT-Pro-Deployment-Scripts
+    https://github.com/OfficeDev/Office-IT-Pro-Deployment-Scripts
+
 .PARAMETER ComputerName
-The computer or list of computers from which to query 
+    The computer or list of computers from which to query 
+
 .PARAMETER ShowAllInstalledProducts
-Will expand the output to include all installed Office products
+    Will expand the output to include all installed Office products
+
 .EXAMPLE
-Get-OfficeVersion
-Description:
-Will return the locally installed Office product
+    Get-OfficeVersion
+    
+    Will return the locally installed Office product
+
 .EXAMPLE
-Get-OfficeVersion -ComputerName client01,client02
-Description:
-Will return the installed Office product on the remote computers
+    Get-OfficeVersion -ComputerName client01,client02
+    
+    Will return the installed Office product on the remote computers
+
 .EXAMPLE
-Get-OfficeVersion | select *
-Description:
-Will return the locally installed Office product with all of the available properties
+    Get-OfficeVersion | select *
+    
+    Will return the locally installed Office product with all of the available properties
 #>
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
@@ -1101,8 +1162,6 @@ process {
        }
     }
 
-    
-
     foreach ($regKey in $installKeys) {
         $keyList = new-object System.Collections.ArrayList
         $keys = $regProv.EnumKey($HKLM, $regKey)
@@ -1224,7 +1283,6 @@ process {
 
         }
     }
-
   }
 
   $results = Get-Unique -InputObject $results 
@@ -1272,33 +1330,27 @@ Function GetScriptRoot() {
 function GetProductName {
 param(
     [Parameter()]
-    [string]$ProductName,
-
-    [Parameter()]
-    [string]$LogFilePath
+    [string]$ProductName
 )
     $defaultDisplaySet = 'DisplayName','Name','Version'
     $defaultDisplayPropertySet = New-Object System.Management.Automation.PSPropertySet('DefaultDisplayPropertySet',[string[]]$defaultDisplaySet)
     $PSStandardMembers = [System.Management.Automation.PSMemberInfo[]]@($defaultDisplayPropertySet)
     $results = New-Object PSObject[] 0;
     
-    $currentFileName = Get-CurrentFileName
-    Set-Alias -name LINENUM -value Get-CurrentLineNumber
-
     if($ProductName -eq 'MainOfficeProduct'){
         $MainOfficeProducts = @()
         #$Products = (Get-OfficeVersion).DisplayName | select -Unique
         $MainOfficeProducts = (Get-OfficeVersion)
-        if($MainOfficeProducts.GetType().Name -eq "Object[]"){
-            $primaryOfficeLanguage = GetClientCulture
-            $MainOfficeProduct = (Get-OfficeVersion) | ? {$_.DisplayName -match $primaryOfficeLanguage}
-            $ProductName = $MainOfficeProduct.DisplayName
-        } else {
-            $ProductName = $MainOfficeProducts.DisplayName
+        if($MainOfficeProducts){
+            if($MainOfficeProducts.GetType().Name -eq "Object[]"){
+                $primaryOfficeLanguage = GetClientCulture
+                $MainOfficeProduct = (Get-OfficeVersion) | ? {$_.DisplayName -match $primaryOfficeLanguage}
+                $ProductName = $MainOfficeProduct.DisplayName
+            } else {
+                $ProductName = $MainOfficeProducts.DisplayName
+            }
         }
-    }
-    
-    WriteToLogFile -LNumber $(LINENUM) -FName $currentFileName -ActionError "ProductName set to $ProductName" -LogFilePath $LogFilePath 
+    } 
         
     $HKLM = [UInt32] "0x80000002"
     $HKCR = [UInt32] "0x80000000"
